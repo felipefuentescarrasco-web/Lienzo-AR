@@ -85,12 +85,33 @@
   #cropwrap { position: relative; max-width: 100%; }
   #cropimg { display: block; max-width: 100%; max-height: 70vh; background: #2a3038; touch-action: none; }
   #cropbox { position: absolute; border: 2px dashed var(--accent); background: #ff2d7826; pointer-events: none; }
+  button.hl { background: #3a1a2a; border-color: var(--accent); }
+  #colorBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 84px); z-index: 11; background: #000d; padding: 10px; border-radius: 14px; display: grid; gap: 8px; width: min(94%, 460px); }
+  #colorBar .sw { width: 30px; height: 30px; border: 2px solid #fff4; }
+  #colorBar .sw.on { border: 3px solid #fff; }
+  #colorBar input[type=color] { width: 44px; height: 34px; border: 0; background: none; padding: 0; }
+  .modal { position: fixed; inset: 0; z-index: 36; background: #000d; display: flex; align-items: center; justify-content: center; padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px); }
+  .modal .caja { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; width: min(640px, 100%); max-height: 100%; overflow-y: auto; display: grid; gap: 10px; }
+  .modal h2 { margin: 0; font-size: 20px; }
+  .modal canvas { width: 100%; height: auto; border-radius: 10px; background: #000; touch-action: none; }
+  .modal .row label { flex-basis: 110px; }
+  .modal .fin { justify-content: flex-end; }
+  .modal input[type=text] { flex: 1; min-width: 0; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: #0d1115; color: var(--fg); font: inherit; }
+  .archivo { display: block; text-align: center; padding: 14px; border: 2px dashed var(--accent); border-radius: 12px; cursor: pointer; }
+  .archivo input { display: none; }
+  #bgPrev { background: #f4efe6; }
+  .lista { display: flex; flex-direction: column; gap: 6px; }
+  .lista .c { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); }
+  .lista .c .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   @media (max-height: 500px) {
     #bar { left: auto; width: min(420px, 60%); padding-top: 6px; background: none; }
     #bar button { min-height: 44px; flex-direction: row; justify-content: center; gap: 6px; }
     #bar button b { font-size: 16px; }
     #sheet { left: auto; width: min(460px, 100%); max-height: 100%; border-radius: 18px 0 0 0; }
     #brushBar { bottom: calc(var(--safe-b) + 64px); }
+    #colorBar { left: 8px; transform: none; bottom: calc(var(--safe-b) + 8px); width: 236px; padding: 8px; gap: 6px; }
+    #colorBar .sw { width: 24px; height: 24px; }
+    #colorBar button { padding: 6px 8px; font-size: 13px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -120,6 +141,12 @@
   <button id="bbListo">Listo</button>
 </div>
 
+<div id="colorBar" hidden>
+  <div class="row"><button id="cbBalde" class="on">Rellenar zona</button><button id="cbPincel">🖌 Pincel</button><input id="cbTam" type="range" min="10" max="160" step="5" aria-label="Tamaño del pincel" hidden></div>
+  <div class="row" id="pinturas"></div>
+  <div class="row"><label for="cbOtro" class="nota">Otro</label><input id="cbOtro" type="color" value="#ff7a00"><button id="cbUndo">↶ Deshacer</button><button id="cbListo">Listo</button></div>
+</div>
+
 <div id="sheet" hidden>
   <div class="grip"></div>
   <h3>Capas</h3>
@@ -131,8 +158,18 @@
   <div class="row"><label for="bold">Grosor</label><input id="bold" type="range" min="0" max="3" step="1"></div>
   <div class="row" style="margin-top:6px"><button id="bPincel">🖌 Tapar lo ya dibujado</button><button id="bLimpiar">Quitar tapado</button></div>
 
+  <h3>Colores para pintar</h3>
+  <div class="row"><button id="bColorear" class="hl">🎨 Colorear tocando</button><button id="bSugerir">✨ Colores sugeridos</button></div>
+  <div class="row" style="margin-top:6px"><button id="bVerCol">Ocultar colores</button><button id="bBorrarCol">Borrar colores</button></div>
+  <div class="row" style="margin-top:6px"><label for="colOp">Intensidad color</label><input id="colOp" type="range" min="0.15" max="1" step="0.05"></div>
+
   <h3>Cámara</h3>
   <div class="row"><label for="dim">Oscurecer</label><input id="dim" type="range" min="0" max="0.8" step="0.05"></div>
+
+  <h3>Agregar cosas nuevas</h3>
+  <div class="grid2"><button id="bNueva" class="hl">➕ Foto o dibujo propio</button><button id="bBanderines" class="hl">🎏 Banderines y papel picado</button></div>
+  <h3>Mis imágenes</h3>
+  <div id="propias" class="lista"></div>
 
   <h3>Agregar lo que falta (del boceto)</h3>
   <div class="grid2" id="presets"></div>
@@ -170,9 +207,39 @@
   <div id="cropwrap"><img id="cropimg" src="boceto_lineas.png" alt="Boceto" draggable="false"><div id="cropbox" hidden></div></div>
   <div class="row"><button id="cropOk">Crear capa</button><button id="cropNo">Cancelar</button></div>
 </div>
+<div id="mNueva" class="modal" hidden>
+  <div class="caja">
+    <h2>Foto o dibujo propio</h2>
+    <p class="nota">Saca una foto o elige una imagen. La app la convierte en líneas para calcar y guarda sus colores como sugerencia.</p>
+    <label class="archivo"><input id="niArchivo" type="file" accept="image/*"> 📷 Elegir o sacar foto</label>
+    <div id="niPaso2" hidden>
+      <canvas id="niPrev"></canvas>
+      <p class="nota">Arrastra sobre la imagen para recortar.</p>
+      <div class="row" id="niModo"><button data-m="lapiz" class="on">Dibujo o lápiz</button><button data-m="foto">Foto o ilustración</button></div>
+      <div class="row"><label for="niDetalle">Detalle</label><input id="niDetalle" type="range" min="0" max="1" step="0.05" value="0.5"></div>
+      <div class="row"><label for="niFondo">Quitar fondo</label><input id="niFondo" type="checkbox"><button id="niTodo">Imagen completa</button></div>
+      <div class="row"><label for="niNombre">Nombre</label><input id="niNombre" type="text" maxlength="30"></div>
+    </div>
+    <div class="row fin"><button id="niNo">Cancelar</button><button id="niOk" class="hl">Agregar al lienzo</button></div>
+  </div>
+</div>
+
+<div id="mBand" class="modal" hidden>
+  <div class="caja">
+    <h2>Banderines</h2>
+    <canvas id="bgPrev"></canvas>
+    <div class="row" id="bgForma"><button data-v="coco">💀 Papel picado Coco</button><button data-v="tri">Triangulares</button><button data-v="rect">Rectangulares</button></div>
+    <div class="row" id="bgFiguraFila"><span class="nota">Figura</span><span class="row" id="bgFigura"><button data-v="mezcla">Mezcla</button><button data-v="calavera">Calaveras</button><button data-v="guitarra">Guitarras</button><button data-v="flor">Cempasúchil</button><button data-v="corazon">Corazones</button><button data-v="estrella">Estrellas</button></span></div>
+    <div class="row" id="bgPaleta"><span class="nota">Colores</span><button data-v="coco">México / Coco</button><button data-v="chile">Chile</button><button data-v="arcoiris">Arcoíris</button><button data-v="pastel">Pastel</button></div>
+    <div class="row"><label for="bgN">Cantidad <b id="bgNval">7</b></label><input id="bgN" type="range" min="3" max="14" step="1" value="7"></div>
+    <div class="row"><label for="bgCurva">Curva</label><input id="bgCurva" type="range" min="0" max="1" step="0.05" value="0.5"></div>
+    <div class="row fin"><button id="bgNo">Cancelar</button><button id="bgOk" class="hl">Agregar al lienzo</button></div>
+  </div>
+</div>
 <div id="toast"></div>
 
 <script src="vendor/jsfeat-min.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=5"></script>
+<script src="extras.js?v=5"></script>
 </body>
 </html>

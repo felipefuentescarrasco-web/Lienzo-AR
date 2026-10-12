@@ -9,19 +9,19 @@ const COLORS = ['#ff2d78', '#00e5ff', '#ffe600', '#39ff6a', '#ffffff', '#ff8a00'
 
 const SRCS = {
   boceto:       { file: 'boceto_lineas.png', w: SRC_W, h: SRC_H },
-  banderines:   { file: 'dibujos/banderines.svg', w: 1800, h: 520, vector: true },
-  calabaza:     { file: 'dibujos/calabaza.svg', w: 800, h: 760, vector: true },
-  guitarra:     { file: 'dibujos/guitarra.svg', w: 400, h: 1100, vector: true },
-  cara_estatua: { file: 'dibujos/cara_estatua.svg', w: 600, h: 800, vector: true },
-  copihues:     { file: 'dibujos/copihues.svg', w: 900, h: 760, vector: true },
+  banderines:   { file: 'dibujos/banderines.svg', w: 1800, h: 520, vector: true, color: 'dibujos/banderines_color.svg' },
+  calabaza:     { file: 'dibujos/calabaza.svg', w: 800, h: 760, vector: true, color: 'dibujos/calabaza_color.svg' },
+  guitarra:     { file: 'dibujos/guitarra.svg', w: 400, h: 1100, vector: true, color: 'dibujos/guitarra_color.svg' },
+  cara_estatua: { file: 'dibujos/cara_estatua.svg', w: 600, h: 800, vector: true, color: 'dibujos/cara_estatua_color.svg' },
+  copihues:     { file: 'dibujos/copihues.svg', w: 900, h: 760, vector: true, color: 'dibujos/copihues_color.svg' },
   f_calabaza:   { file: 'dibujos/foto_calabaza.png', w: 1520, h: 1680 },
-  f_aguila:     { file: 'dibujos/foto_aguila.png', w: 1703, h: 1756 },
+  f_aguila:     { file: 'dibujos/foto_aguila.png', w: 1703, h: 1756, color: 'dibujos/foto_aguila_color.png' },
   f_guitarra:   { file: 'dibujos/foto_guitarra.png', w: 869, h: 2400 },
-  f_estatua:    { file: 'dibujos/foto_estatua.png', w: 1041, h: 1800 },
-  f_piramide:   { file: 'dibujos/foto_piramide.png', w: 1789, h: 942 },
+  f_estatua:    { file: 'dibujos/foto_estatua.png', w: 1041, h: 1800, color: 'dibujos/foto_estatua_color.png' },
+  f_piramide:   { file: 'dibujos/foto_piramide.png', w: 1789, h: 942, color: 'dibujos/foto_piramide_color.png' },
   f_loro:       { file: 'dibujos/foto_loro.png', w: 1035, h: 1800 },
-  f_picado:     { file: 'dibujos/foto_papel_picado.png', w: 973, h: 974 },
-  f_picado_g:   { file: 'dibujos/foto_papel_picado_guirnalda.png', w: 7519, h: 1326 },
+  f_picado:     { file: 'dibujos/foto_papel_picado.png', w: 973, h: 974, color: 'dibujos/foto_papel_picado_color.png' },
+  f_picado_g:   { file: 'dibujos/foto_papel_picado_guirnalda.png', w: 7519, h: 1326, color: 'dibujos/foto_papel_picado_guirnalda_color.png' },
 };
 // Dónde va cada dibujo según el boceto: [x, y, ancho, alto] en coordenadas de boceto_lineas.png
 const ANCLAS = {
@@ -122,9 +122,27 @@ function mkLayer(name, crop, src) {
 }
 function save() {
   if (!S) return;
-  for (const L of S.layers) { const r = RT.get(L.id); if (r && r.maskDirty) { L.mask = r.mask.toDataURL(); r.maskDirty = false; } }
+  // el tapado y los colores pesan mucho para localStorage: van a IndexedDB
+  for (const L of S.layers) {
+    const r = RT.get(L.id); if (!r) continue;
+    if (r.maskDirty) { r.maskDirty = false; r.mask.toBlob(b => b && DB.set('mask:' + L.id, b)); }
+    if (r.colDirty) { r.colDirty = false; r.col.toBlob(b => b && DB.set('col:' + L.id, b)); }
+  }
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { }
 }
+// almacenamiento local de imágenes (tapado, colores, imágenes propias)
+const DB = {
+  open() {
+    return this.p || (this.p = new Promise(ok => {
+      try { const r = indexedDB.open('lienzo-ar', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => ok(r.result); r.onerror = () => ok(null); }
+      catch (e) { ok(null); }
+    }));
+  },
+  async get(k) { const db = await this.open(); if (!db) return null; return new Promise(ok => { try { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => ok(q.result ?? null); q.onerror = () => ok(null); } catch (e) { ok(null); } }); },
+  async set(k, v) { const db = await this.open(); if (!db) return; return new Promise(ok => { try { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); } }); },
+  async del(k) { const db = await this.open(); if (!db) return; return new Promise(ok => { try { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').delete(k); t.oncomplete = ok; t.onerror = ok; } catch (e) { ok(); } }); },
+};
+function blobAImagen(b) { return new Promise(ok => { if (!b) return ok(null); const u = URL.createObjectURL(b), im = new Image(); im.onload = () => ok(im); im.onerror = () => ok(null); im.src = u; }); }
 function load() {
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.layers) return s; } catch (e) { }
   return null;
@@ -138,11 +156,16 @@ function ensureRT(L) {
   const big = Math.max(L.crop[2], L.crop[3]), k = SRCS[L.src].vector ? 1600 / big : Math.min(1, 2400 / big);
   const cw = Math.round(L.crop[2] * k), ch = Math.round(L.crop[3] * k);
   const cv = document.createElement('canvas'); cv.className = 'layer'; cv.width = cw; cv.height = ch;
-  const mask = document.createElement('canvas'); mask.width = cw; mask.height = ch;
+  const lienzo = () => { const c = document.createElement('canvas'); c.width = cw; c.height = ch; return c; };
+  const mask = lienzo(), col = lienzo(), tmp = lienzo();
   stage.insertBefore(cv, ov);
-  r = { cv, mask, cw, ch, handles: [] };
+  r = { cv, mask, col, tmp, cw, ch, handles: [], undo: [] };
   RT.set(L.id, r);
-  if (L.mask) { const m = new Image(); m.onload = () => { mask.getContext('2d').drawImage(m, 0, 0, cw, ch); paint(L); }; m.src = L.mask; }
+  const recuperar = async (clave, destino, viejo) => {
+    const im = await blobAImagen(await DB.get(clave + ':' + L.id)) || (viejo ? await new Promise(ok => { const m = new Image(); m.onload = () => ok(m); m.onerror = () => ok(null); m.src = viejo; }) : null);
+    if (im) { destino.getContext('2d').drawImage(im, 0, 0, cw, ch); paint(L); }
+  };
+  recuperar('mask', mask, L.mask); recuperar('col', col);
   for (let i = 0; i < 5; i++) {
     const d = document.createElement('div'); d.className = 'h' + (i === 4 ? ' c' : '');
     d.addEventListener('pointerdown', ev => startHandle(ev, L, i));
@@ -151,12 +174,18 @@ function ensureRT(L) {
   return r;
 }
 function paint(L) {
-  const r = ensureRT(L), c = r.cv.getContext('2d');
-  c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, r.cw, r.ch);
+  const r = ensureRT(L), c = r.cv.getContext('2d'), t = r.tmp.getContext('2d');
+  // líneas teñidas en un lienzo aparte
+  t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, r.cw, r.ch);
   const [sx, sy, sw, sh] = L.crop, offs = [[0, 0]];
   for (let i = 1; i <= L.bold; i++) offs.push([i, 0], [-i, 0], [0, i], [0, -i]);
-  for (const [dx, dy] of offs) c.drawImage(IM[L.src], sx, sy, sw, sh, dx, dy, r.cw, r.ch);
-  c.globalCompositeOperation = 'source-in'; c.fillStyle = L.color; c.fillRect(0, 0, r.cw, r.ch);
+  for (const [dx, dy] of offs) t.drawImage(IM[L.src], sx, sy, sw, sh, dx, dy, r.cw, r.ch);
+  t.globalCompositeOperation = 'source-in'; t.fillStyle = L.color; t.fillRect(0, 0, r.cw, r.ch);
+  t.globalCompositeOperation = 'source-over';
+  // colores sugeridos debajo, líneas encima
+  c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, r.cw, r.ch);
+  if (L.verCol !== false) { c.globalAlpha = L.colOp ?? 0.6; c.drawImage(r.col, 0, 0); c.globalAlpha = 1; }
+  c.drawImage(r.tmp, 0, 0);
   c.globalCompositeOperation = 'destination-out'; c.drawImage(r.mask, 0, 0);
   c.globalCompositeOperation = 'source-over';
 }
@@ -168,7 +197,7 @@ function place() {
     r.cv.style.zIndex = idx + 1;
     r.cv.style.transform = `matrix3d(${a / r.cw},${d / r.cw},0,${g / r.cw},${b / r.ch},${e / r.ch},0,${h / r.ch},0,0,1,0,${c},${f},0,1)`;
     r.cv.style.opacity = L.op; r.cv.style.display = L.vis ? '' : 'none';
-    const isSel = L.id === S.sel && L.vis && edit && !brushMode;
+    const isSel = L.id === S.sel && L.vis && edit && !brushMode && !colorMode;
     [...p, centro(p)].forEach(([x, y], i) => { const hd = r.handles[i]; hd.style.left = x + 'px'; hd.style.top = y + 'px'; hd.style.display = isSel ? '' : 'none'; });
     if (L.id === S.sel && L.vis && edit) svg += `<polygon points="${p.map(q => q.join(',')).join(' ')}" fill="none" stroke="#ffe600" stroke-dasharray="8 6" stroke-width="2"/>`;
   });
@@ -366,6 +395,7 @@ stage.addEventListener('pointerdown', ev => {
   if (ev.target.classList.contains('h')) return;
   ptrs.set(ev.pointerId, [ev.clientX, ev.clientY]);
   stage.setPointerCapture(ev.pointerId);
+  if (colorMode) { if (tocarColor(ev.clientX, ev.clientY)) drag = { type: 'colorbrush' }; return; }
   if (brushMode) { drag = { type: 'brush' }; brushAt(ev.clientX, ev.clientY); return; }
   if (!edit) return;
   if (ptrs.size === 2 && sel()) {
@@ -379,6 +409,7 @@ addEventListener('pointermove', ev => {
   if (ptrs.has(ev.pointerId)) ptrs.set(ev.pointerId, [ev.clientX, ev.clientY]);
   if (!drag) return;
   if (drag.type === 'brush') { brushAt(ev.clientX, ev.clientY); return; }
+  if (drag.type === 'colorbrush') { pincelColor(ev.clientX, ev.clientY); return; }
   if (drag.type === 'corner') {
     const p = drag.p0.map(q => q.slice()), dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
     if (drag.i === 4) p.forEach(q => { q[0] += dx; q[1] += dy; }); else { p[drag.i][0] += dx; p[drag.i][1] += dy; }
@@ -439,13 +470,14 @@ function renderSheet() {
     const l = S.layers.find(x => String(x.id) === d.dataset.id); if (!l) return;
     const a = ev.target.dataset.a;
     if (a === 'vis') l.vis = !l.vis;
-    else if (a === 'del') { S.layers = S.layers.filter(x => x !== l); if (S.sel === l.id) S.sel = S.layers.length ? S.layers[S.layers.length - 1].id : null; }
+    else if (a === 'del') { S.layers = S.layers.filter(x => x !== l); DB.del('mask:' + l.id); DB.del('col:' + l.id); if (S.sel === l.id) S.sel = S.layers.length ? S.layers[S.layers.length - 1].id : null; }
     else S.sel = l.id;
     save(); renderSheet();
   });
   $('#colores').innerHTML = COLORS.map(c => `<button class="sw ${L && L.color === c ? 'on' : ''}" style="background:${c}" data-c="${c}" aria-label="Color ${c}"></button>`).join('');
   $('#colores').querySelectorAll('.sw').forEach(b => b.onclick = () => { const l = sel(); if (!l) return; l.color = b.dataset.c; paint(l); save(); renderSheet(); });
   $('#op').value = L ? L.op : 1; $('#bold').value = L ? L.bold : 1; $('#dim').value = S.dim;
+  renderColorUI();
 }
 $('#op').oninput = e => { const L = sel(); if (L) { L.op = +e.target.value; save(); } };
 $('#bold').oninput = e => { const L = sel(); if (L) { L.bold = +e.target.value; paint(L); save(); } };
@@ -456,12 +488,12 @@ function setBrush(m) {
   $('#bbTapar').classList.toggle('on', m === 'tapar'); $('#bbDestapar').classList.toggle('on', m === 'destapar');
   $('#bbSize').value = S.brushSize;
 }
-$('#bPincel').onclick = () => { if (!sel()) return; $('#sheet').hidden = true; setBrush('tapar'); toast('Pinta con el dedo sobre lo que ya está dibujado'); };
+$('#bPincel').onclick = () => { if (!sel()) return; $('#sheet').hidden = true; setColorMode(false); setBrush('tapar'); toast('Pinta con el dedo sobre lo que ya está dibujado'); };
 $('#bbTapar').onclick = () => setBrush('tapar');
 $('#bbDestapar').onclick = () => setBrush('destapar');
 $('#bbListo').onclick = () => { setBrush(null); save(); };
 $('#bbSize').oninput = e => { S.brushSize = +e.target.value; };
-$('#bLimpiar').onclick = () => { const L = sel(); if (!L) return; const r = ensureRT(L); r.mask.getContext('2d').clearRect(0, 0, r.cw, r.ch); L.mask = null; paint(L); save(); };
+$('#bLimpiar').onclick = () => { const L = sel(); if (!L) return; const r = ensureRT(L); r.mask.getContext('2d').clearRect(0, 0, r.cw, r.ch); L.mask = null; DB.del('mask:' + L.id); paint(L); save(); };
 $('#bReset').onclick = () => { $('#resetConf').hidden = false; };
 $('#bResetNo').onclick = () => { $('#resetConf').hidden = true; };
 $('#bResetSi').onclick = () => { $('#resetConf').hidden = true; if (T.on) T.soltar(); defaultState(); paint(S.layers[0]); save(); renderSheet(); actualizarBarra(); };
@@ -506,6 +538,7 @@ async function empezar(modo) {
   try {
     await cargarImagenes;
     if (modo === 'demo') await abrirDemo(); else await abrirCamara();
+    await cargarPropias();
   } catch (e) {
     const msg = e && e.name === 'NotAllowedError' ? 'No diste permiso para usar la cámara. Actívalo en la configuración del navegador para este sitio y vuelve a intentar.' : (e.message || String(e));
     $('#error').textContent = msg; $('#error').hidden = false; return;
