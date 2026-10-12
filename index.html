@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#101418">
+<title>Lienzo AR</title>
+<style>
+  /* Capa de cámara a pantalla completa; controles grandes abajo para usar con una mano */
+  :root {
+    --bg: #101418; --panel: #171c22f2; --line: #2c343e; --fg: #eef2f5; --muted: #9aa6b2;
+    --accent: #ff2d78; --ok: #39d98a; --warn: #ffb020;
+    --safe-b: env(safe-area-inset-bottom, 0px); --safe-t: env(safe-area-inset-top, 0px);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); overflow: hidden;
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; user-select: none; -webkit-user-select: none; }
+  button { font: inherit; color: var(--fg); background: #232a32; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; cursor: pointer; }
+  button:active { transform: scale(.97); }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  #cam, #demo { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+  #shade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  #stage { position: fixed; inset: 0; touch-action: none; }
+  #stage canvas.layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+  #ov { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .h { position: absolute; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; border: 3px solid #ffe600; background: #0006; z-index: 5; touch-action: none; }
+  .h::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: #ffe600; }
+  .h.c { border-style: dashed; width: 48px; height: 48px; margin: -24px 0 0 -24px; }
+  body.locked .h, body.nooverlay #stage canvas.layer, body.nooverlay .h, body.nooverlay #ov { display: none; }
+
+  /* barra superior: estado del seguimiento */
+  #top { position: fixed; left: 0; right: 0; top: 0; padding: calc(var(--safe-t) + 8px) 12px 8px; display: flex; gap: 8px; align-items: center; pointer-events: none; z-index: 10; }
+  #estado { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #000a; font-size: 13px; }
+  #estado i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+  #estado.ok i { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  #estado.warn i { background: var(--warn); }
+  #top .sp { flex: 1; }
+  #bTorch { pointer-events: auto; padding: 6px 10px; border-radius: 999px; background: #000a; }
+
+  /* barra inferior */
+  #bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 10px calc(var(--safe-b) + 10px); display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: linear-gradient(#0000, #000c 40%); z-index: 10; }
+  #bar button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; font-size: 12px; background: #1b2128e6; min-height: 58px; }
+  #bar button b { font-size: 20px; line-height: 1; font-weight: 400; }
+  #bar button.on { background: var(--accent); }
+
+  /* hoja de opciones */
+  #sheet { position: fixed; left: 0; right: 0; bottom: 0; max-height: 72%; overflow-y: auto; background: var(--panel); border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 6px 16px calc(var(--safe-b) + 16px); z-index: 20; backdrop-filter: blur(8px); }
+  #sheet .grip { width: 44px; height: 5px; border-radius: 3px; background: #4a5561; margin: 6px auto 4px; }
+  #sheet h3 { margin: 16px 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .row label { flex: 0 0 96px; color: var(--muted); font-size: 14px; }
+  .row input[type=range] { flex: 1; min-width: 120px; accent-color: var(--accent); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid2 button { text-align: left; font-size: 14px; }
+  #capas { display: flex; flex-direction: column; gap: 6px; }
+  #capas .c { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--line); }
+  #capas .c.sel { border-color: var(--accent); background: #ff2d7822; }
+  #capas .c .n { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #capas .c button { padding: 6px 9px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px; }
+  .sw { width: 34px; height: 34px; border-radius: 50%; padding: 0; border: 3px solid #0000; }
+  .sw.on { border-color: #fff; }
+  #cerrarSheet { width: 100%; margin-top: 16px; }
+
+  /* pantalla de inicio */
+  #inicio { position: fixed; inset: 0; z-index: 30; background: radial-gradient(120% 80% at 50% 0%, #2a1020 0%, var(--bg) 60%); display: flex; flex-direction: column; justify-content: center; padding: calc(var(--safe-t) + 24px) 24px calc(var(--safe-b) + 24px); gap: 18px; overflow-y: auto; }
+  #inicio h1 { margin: 0; font-size: 34px; letter-spacing: -.01em; }
+  #inicio h1 span { color: var(--accent); }
+  #inicio ol { margin: 0; padding-left: 20px; color: #c9d2db; max-width: 34em; display: grid; gap: 6px; }
+  #inicio .acc { display: flex; flex-direction: column; gap: 10px; max-width: 26em; }
+  #inicio .acc button { padding: 14px; font-size: 17px; }
+  #bCam { background: var(--accent); border-color: var(--accent); }
+  #error { color: #ffb4b4; max-width: 34em; }
+  .nota { color: var(--muted); font-size: 13px; max-width: 34em; }
+
+  #toast { position: fixed; left: 50%; top: calc(var(--safe-t) + 54px); transform: translateX(-50%); background: #000d; padding: 8px 14px; border-radius: 10px; opacity: 0; transition: opacity .3s; z-index: 40; pointer-events: none; max-width: 90%; text-align: center; font-size: 14px; }
+  #brushBar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 90px); display: flex; gap: 8px; z-index: 11; background: #000c; padding: 8px; border-radius: 14px; align-items: center; }
+  #brushBar input { width: 110px; accent-color: var(--accent); }
+
+  #modal { position: fixed; inset: 0; z-index: 35; background: #000e; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; }
+  #cropwrap { position: relative; max-width: 100%; }
+  #cropimg { display: block; max-width: 100%; max-height: 70vh; background: #2a3038; touch-action: none; }
+  #cropbox { position: absolute; border: 2px dashed var(--accent); background: #ff2d7826; pointer-events: none; }
+  @media (max-height: 500px) {
+    #bar { left: auto; width: min(420px, 60%); padding-top: 6px; background: none; }
+    #bar button { min-height: 44px; flex-direction: row; justify-content: center; gap: 6px; }
+    #bar button b { font-size: 16px; }
+    #sheet { left: auto; width: min(460px, 100%); max-height: 100%; border-radius: 18px 0 0 0; }
+    #brushBar { bottom: calc(var(--safe-b) + 64px); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body class="">
+<video id="cam" playsinline muted autoplay></video>
+<canvas id="demo" hidden></canvas>
+<div id="shade"></div>
+<div id="stage"><svg id="ov"></svg></div>
+
+<div id="top">
+  <div id="estado"><i></i><span>Sin anclar</span></div>
+  <span class="sp"></span>
+  <button id="bTorch" hidden>🔦 Luz</button>
+</div>
+
+<div id="bar">
+  <button id="bCapas"><b>☰</b>Capas</button>
+  <button id="bAnclar"><b>📌</b>Anclar</button>
+  <button id="bAjustar" class="on"><b>✋</b>Ajustar</button>
+  <button id="bVer"><b>👁</b>Ocultar</button>
+</div>
+
+<div id="brushBar" hidden>
+  <button id="bbTapar">Tapar</button><button id="bbDestapar">Destapar</button>
+  <input id="bbSize" type="range" min="10" max="160" step="5" aria-label="Tamaño del pincel">
+  <button id="bbListo">Listo</button>
+</div>
+
+<div id="sheet" hidden>
+  <div class="grip"></div>
+  <h3>Capas</h3>
+  <div id="capas"></div>
+
+  <h3>Capa seleccionada</h3>
+  <div class="row" id="colores"></div>
+  <div class="row" style="margin-top:10px"><label for="op">Intensidad</label><input id="op" type="range" min="0.1" max="1" step="0.05"></div>
+  <div class="row"><label for="bold">Grosor</label><input id="bold" type="range" min="0" max="3" step="1"></div>
+  <div class="row" style="margin-top:6px"><button id="bPincel">🖌 Tapar lo ya dibujado</button><button id="bLimpiar">Quitar tapado</button></div>
+
+  <h3>Cámara</h3>
+  <div class="row"><label for="dim">Oscurecer</label><input id="dim" type="range" min="0" max="0.8" step="0.05"></div>
+
+  <h3>Agregar lo que falta (del boceto)</h3>
+  <div class="grid2" id="presets"></div>
+  <button id="bRecorte" style="width:100%;margin-top:8px">✂ Recortar otra parte del boceto…</button>
+
+  <h3>Fotos que enviaste</h3>
+  <div class="grid2" id="fotos"></div>
+
+  <h3>Dibujos detallados</h3>
+  <div class="grid2" id="dibujos"></div>
+
+  <h3>Todo</h3>
+  <div class="row"><button id="bReset">Reiniciar todo</button><span id="resetConf" hidden class="row"><span class="nota">¿Seguro?</span><button id="bResetSi">Sí, borrar</button><button id="bResetNo">No</button></span></div>
+  <button id="cerrarSheet">Cerrar</button>
+</div>
+
+<div id="inicio">
+  <h1>Lienzo <span>AR</span></h1>
+  <ol>
+    <li>Apunta el celular al lienzo para que quede completo en la pantalla.</li>
+    <li>Arrastra las 4 esquinas amarillas del boceto hasta las esquinas del lienzo.</li>
+    <li>Toca <b>📌 Anclar</b>. El dibujo se queda pegado al lienzo aunque muevas un poco el celular.</li>
+    <li>En <b>☰ Capas</b> agrega lo que falta. Cada dibujo aparece donde va según el boceto.</li>
+  </ol>
+  <div class="acc">
+    <button id="bCam">📷 Abrir cámara</button>
+    <button id="bDemo">Probar sin cámara (foto del lienzo)</button>
+  </div>
+  <p id="error" hidden></p>
+  <p class="nota">Funciona mejor con el celular apoyado en algo firme. Si el dibujo se corre, toca ✋ Ajustar, corrígelo y vuelve a tocar 📌 Anclar.</p>
+</div>
+
+<div id="modal" hidden>
+  <div>Arrastra un rectángulo sobre la parte del boceto que quieres</div>
+  <div id="cropwrap"><img id="cropimg" src="boceto_lineas.png" alt="Boceto" draggable="false"><div id="cropbox" hidden></div></div>
+  <div class="row"><button id="cropOk">Crear capa</button><button id="cropNo">Cancelar</button></div>
+</div>
+<div id="toast"></div>
+
+<script src="vendor/jsfeat-min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

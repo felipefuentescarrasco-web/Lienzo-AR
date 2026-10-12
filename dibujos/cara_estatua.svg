@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800" viewBox="0 0 600 800">
+<g fill="none" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="3">
+<g transform="translate(0,20)">
+<!-- contorno de la cara -->
+<path d="M168,330 C162,500 215,690 300,702 C385,690 438,500 432,330" stroke-width="4"/>
+<!-- orejas tapadas por el pelo: mechones -->
+<path d="M168,330 C140,380 150,430 135,480 C125,520 140,560 130,600" stroke-width="3"/>
+<path d="M150,340 C125,390 132,440 118,490 C108,530 120,570 110,610" stroke-width="2"/>
+<path d="M432,330 C460,380 450,430 465,480 C475,520 460,560 470,600" stroke-width="3"/>
+<path d="M450,340 C475,390 468,440 482,490 C492,530 480,570 490,610" stroke-width="2"/>
+<path d="M175,325 C200,345 230,340 250,328 M425,325 C400,345 370,340 350,328" stroke-width="2"/>
+<!-- diadema -->
+<path d="M140,330 C200,280 400,280 460,330" stroke-width="4"/>
+<path d="M150,290 C210,240 390,240 450,290" stroke-width="4"/>
+<path d="M140,330 L150,290 M460,330 L450,290" stroke-width="4"/>
+<!-- cejas -->
+<path d="M200,412 C225,395 260,393 285,405" stroke-width="3.5"/>
+<path d="M400,412 C375,395 340,393 315,405" stroke-width="3.5"/>
+<!-- ojos -->
+<path d="M208,448 C228,430 262,428 282,446 C262,458 228,460 208,448 Z" stroke-width="3"/>
+<path d="M392,448 C372,430 338,428 318,446 C338,458 372,460 392,448 Z" stroke-width="3"/>
+<path d="M210,438 C230,420 262,418 284,434" stroke-width="1.8"/>
+<path d="M390,438 C370,420 338,418 316,434" stroke-width="1.8"/>
+<circle cx="245" cy="445" r="11" stroke-width="2.5"/>
+<circle cx="355" cy="445" r="11" stroke-width="2.5"/>
+<circle cx="245" cy="445" r="4" stroke-width="2"/>
+<circle cx="355" cy="445" r="4" stroke-width="2"/>
+<path d="M215,462 C235,472 260,472 278,462 M385,462 C365,472 340,472 322,462" stroke-width="1.4"/>
+<!-- nariz -->
+<path d="M290,420 C288,470 282,510 270,540" stroke-width="2.2"/>
+<path d="M270,540 C268,556 284,560 292,552 C298,560 302,560 308,552 C316,560 332,556 330,540" stroke-width="3"/>
+<path d="M310,420 C312,470 318,510 330,540" stroke-width="1.4"/>
+<!-- boca -->
+<path d="M250,600 C270,590 288,585 300,592 C312,585 330,590 350,600" stroke-width="3"/>
+<path d="M250,600 C275,606 325,606 350,600" stroke-width="3"/>
+<path d="M258,604 C280,630 320,630 342,604" stroke-width="3"/>
+<path d="M290,574 L292,586 M310,574 L308,586" stroke-width="1.4"/>
+<!-- mentón y mejillas -->
+<path d="M275,660 C290,668 310,668 325,660" stroke-width="2"/>
+<path d="M205,540 C215,570 230,590 240,600 M395,540 C385,570 370,590 360,600" stroke-width="1.4"/>
+<!-- cuello -->
+<path d="M235,660 C238,700 232,750 225,790 M365,660 C362,700 368,750 375,790" stroke-width="3.5"/>
+
+<rect x="169.0" y="290.4" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="209.0" y="273.1" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="249.0" y="261.1" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="289.0" y="256.8" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="329.0" y="261.1" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="369.0" y="273.1" width="22" height="18" rx="3" stroke-width="2"/>
+<rect x="409.0" y="290.4" width="22" height="18" rx="3" stroke-width="2"/>
+<path d="M164.9,245.1 L27.5,192.7 L153.2,277.0" stroke-width="3.5"/>
+<path d="M159.0,261.1 L27.5,192.7" stroke-width="1.4"/>
+<path d="M202.6,224.6 L89.1,99.7 L179.2,249.3" stroke-width="3.5"/>
+<path d="M190.9,237.0 L89.1,99.7" stroke-width="1.4"/>
+<path d="M256.2,214.0 L185.1,37.1 L225.0,227.5" stroke-width="3.5"/>
+<path d="M240.6,220.7 L185.1,37.1" stroke-width="1.4"/>
+<path d="M317.0,215.0 L300.0,15.0 L283.0,215.0" stroke-width="3.5"/>
+<path d="M300.0,215.0 L300.0,15.0" stroke-width="1.4"/>
+<path d="M375.0,227.5 L414.9,37.1 L343.8,214.0" stroke-width="3.5"/>
+<path d="M359.4,220.7 L414.9,37.1" stroke-width="1.4"/>
+<path d="M420.8,249.3 L510.9,99.7 L397.4,224.6" stroke-width="3.5"/>
+<path d="M409.1,237.0 L510.9,99.7" stroke-width="1.4"/>
+<path d="M446.8,277.0 L572.5,192.7 L435.1,245.1" stroke-width="3.5"/>
+<path d="M441.0,261.1 L572.5,192.7" stroke-width="1.4"/></g>
+</g>
+</svg>
